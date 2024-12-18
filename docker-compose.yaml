@@ -1,114 +1,86 @@
 services:
   mongo-events:
-    image: mongo:6.0
-    container_name: mongo-events
+    image: mongo:latest
     ports:
-      - 27018:27017
+      - 27017:27017
     volumes:
       - mongodb_event_data:/data/db
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: abc123
 
   mysql-users:
-    image: mysql:8.0
-    container_name: mysql-users
+    image: mysql:latest
     ports:
-      - 3308:3306  # Changed host port to 3308
+      - 3309:3306
     volumes:
       - mysql_user_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: abc123
-      MYSQL_DATABASE: users
-      MYSQL_USER: root
-      MYSQL_PASSWORD: abc123
 
   mysql-registrations:
-    image: mysql:8.0
-    container_name: mysql-registrations
+    image: mysql:latest
     ports:
-      - 3307:3306
+      - 3308:3306
     volumes:
       - mysql_registration_data:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: abc123
-      MYSQL_DATABASE: registrations
-      MYSQL_USER: root
-      MYSQL_PASSWORD: abc123
 
   user-service:
-    build:
-      context: ./user-service
     depends_on:
       - mysql-users
-    container_name: user-service
+    image: lantje/user-service
     ports:
       - 8080:8080
+    command: ["sh", "-c", "until nc -z mysql-users 3306; do echo 'Waiting for MySQL...'; sleep 2; done; java -jar /app/user-service.jar"]
     environment:
       MYSQL_DB_USERNAME: root
       MYSQL_DB_PASSWORD: abc123
       MYSQL_DB_HOST: mysql-users
       MYSQL_DB_PORT: 3306
-      MYSQL_DB_NAME: users
-    networks:
-      - app-network
 
   event-service:
-    build:
-      context: ./event-service
     depends_on:
       - mongo-events
-    container_name: event-service
+    image: lantje/event-service
     ports:
-      - 8081:8080
+      - 8081:8081
+    links:
+      - mongo-events
     environment:
-      MONGODB_URI: mongodb://root:abc123@mongo-events:27017
-    networks:
-      - app-network
+      MONGODB_PORT: 27017
+      MONGODB_HOST: mongo-events
 
   registration-service:
-    build:
-      context: ./registration-service
     depends_on:
       - mysql-registrations
       - user-service
       - event-service
-    container_name: registration-service
+    image: lantje/registration-service
     ports:
       - 8082:8082
+    command: ["sh", "-c", "until nc -z mysql-registrations 3306; do echo 'Waiting for MySQL...'; sleep 10; done; until nc -z user-service 8080; do echo 'Waiting for user-service...'; sleep 2; done; until nc -z event-service 8081; do echo 'Waiting for event-service...'; sleep 2; done; java -jar /app/registration-service.jar"]
     environment:
+      USER_SERVICE_BASEURL: user-service:8080
+      EVENT_SERVICE_BASEURL: event-service:8081
       MYSQL_DB_USERNAME: root
       MYSQL_DB_PASSWORD: abc123
       MYSQL_DB_HOST: mysql-registrations
-      MYSQL_DB_PORT: 3306
-      MYSQL_DB_NAME: registrations
-      USER_SERVICE_BASEURL: http://user-service:8080
-      EVENT_SERVICE_BASEURL: http://event-service:8081
-    networks:
-      - app-network
+      MYSQL_DB_PORT: 3308
+
 
   api-gateway:
-    build:
-      context: ./api-gateway
     depends_on:
       - user-service
       - event-service
       - registration-service
-    container_name: api-gateway
+    image: lantje/api-gateway
     ports:
       - 8083:8083
     environment:
-      USER_SERVICE_BASEURL: http://user-service:8080
-      EVENT_SERVICE_BASEURL: http://event-service:8081
-      REGISTRATION_SERVICE_BASEURL: http://registration-service:8082
-    networks:
-      - app-network
+      USER_SERVICE_BASEURL: user-service:8080
+      EVENT_SERVICE_BASEURL: event-service:8081
+      REGISTRATION_SERVICE_BASEURL: registration-service:8082
 
 volumes:
   mongodb_event_data:
   mysql_user_data:
   mysql_registration_data:
-
-networks:
-  app-network:
-    driver: bridge
