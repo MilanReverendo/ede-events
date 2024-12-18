@@ -1,4 +1,4 @@
 FROM openjdk:17-jdk-slim
 WORKDIR /app
-ADD target/registration-service.jar app.jar
+ADD target/registration-service-0.0.1-SNAPSHOT.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
