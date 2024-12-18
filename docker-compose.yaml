@@ -1,0 +1,114 @@
+services:
+  mongo-events:
+    image: mongo:6.0
+    container_name: mongo-events
+    ports:
+      - 27018:27017
+    volumes:
+      - mongodb_event_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: abc123
+
+  mysql-users:
+    image: mysql:8.0
+    container_name: mysql-users
+    ports:
+      - 3308:3306  # Changed host port to 3308
+    volumes:
+      - mysql_user_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: abc123
+      MYSQL_DATABASE: users
+      MYSQL_USER: root
+      MYSQL_PASSWORD: abc123
+
+  mysql-registrations:
+    image: mysql:8.0
+    container_name: mysql-registrations
+    ports:
+      - 3307:3306
+    volumes:
+      - mysql_registration_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: abc123
+      MYSQL_DATABASE: registrations
+      MYSQL_USER: root
+      MYSQL_PASSWORD: abc123
+
+  user-service:
+    build:
+      context: ./user-service
+    depends_on:
+      - mysql-users
+    container_name: user-service
+    ports:
+      - 8080:8080
+    environment:
+      MYSQL_DB_USERNAME: root
+      MYSQL_DB_PASSWORD: abc123
+      MYSQL_DB_HOST: mysql-users
+      MYSQL_DB_PORT: 3306
+      MYSQL_DB_NAME: users
+    networks:
+      - app-network
+
+  event-service:
+    build:
+      context: ./event-service
+    depends_on:
+      - mongo-events
+    container_name: event-service
+    ports:
+      - 8081:8080
+    environment:
+      MONGODB_URI: mongodb://root:abc123@mongo-events:27017
+    networks:
+      - app-network
+
+  registration-service:
+    build:
+      context: ./registration-service
+    depends_on:
+      - mysql-registrations
+      - user-service
+      - event-service
+    container_name: registration-service
+    ports:
+      - 8082:8082
+    environment:
+      MYSQL_DB_USERNAME: root
+      MYSQL_DB_PASSWORD: abc123
+      MYSQL_DB_HOST: mysql-registrations
+      MYSQL_DB_PORT: 3306
+      MYSQL_DB_NAME: registrations
+      USER_SERVICE_BASEURL: http://user-service:8080
+      EVENT_SERVICE_BASEURL: http://event-service:8081
+    networks:
+      - app-network
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    depends_on:
+      - user-service
+      - event-service
+      - registration-service
+    container_name: api-gateway
+    ports:
+      - 8083:8083
+    environment:
+      USER_SERVICE_BASEURL: http://user-service:8080
+      EVENT_SERVICE_BASEURL: http://event-service:8081
+      REGISTRATION_SERVICE_BASEURL: http://registration-service:8082
+    networks:
+      - app-network
+
+volumes:
+  mongodb_event_data:
+  mysql_user_data:
+  mysql_registration_data:
+
+networks:
+  app-network:
+    driver: bridge
