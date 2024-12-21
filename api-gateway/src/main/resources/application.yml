@@ -10,10 +10,19 @@ logging:
 spring:
   security:
     oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${918676574540-4h053hi3jmt46cfks0h80qkstqmrtk7n.apps.googleusercontent.com}  # Set this value to the Google Client ID
+            client-secret: ${918676574540-4h053hi3jmt46cfks0h80qkstqmrtk7n.apps.googleusercontent.com}  # Set this value to the Google Client Secret
+            scope: openid,profile,email
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"  # The callback URL after login
+            authorization-grant-type: authorization_code
+            client-name: Google
       resourceserver:
         jwt:
-          issuer-uri: https://accounts.google.com # Ensure issuer matches your JWT
-          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs # Public key set for Google
+          issuer-uri: https://accounts.google.com
+          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
 
   cloud:
     gateway:
