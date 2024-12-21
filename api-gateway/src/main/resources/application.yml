@@ -5,55 +5,52 @@ logging:
   level:
     root: INFO
     org.springframework.cloud.gateway: INFO
-    org.springframework.cloud.gateway.route.RouteDefinitionRouteLocator: INFO
-    reactor.netty: INFO
-    org.springframework.security: TRACE
+    org.springframework.security: TRACE # Enable TRACE for debugging security
 
 spring:
   security:
     oauth2:
-      client:
-        registration:
-          google:
-            client-id: ${GOOGLE_CLIENTID}  # Set this value in your environment or Docker config
-            client-secret: ${GOOGLE_CLIENTSECRET}  # Set this value in your environment or Docker config
-            scope: openid,profile,email
       resourceserver:
         jwt:
-          issuer-uri: https://accounts.google.com
-          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+          issuer-uri: https://accounts.google.com # Ensure issuer matches your JWT
+          jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs # Public key set for Google
 
   cloud:
     gateway:
       routes:
+        # User Service
         - id: user-service
-          uri: http://${USER_SERVICE_BASEURL:localhost:8080}  # Ensure USER_SERVICE_BASEURL is set in your environment
+          uri: http://${USER_SERVICE_BASEURL:localhost:8080}
           predicates:
-            - Path=/users  # Match /users path in incoming requests
-            - Method=POST  # Only for POST requests to /users
+            - Path=/users
           filters:
-            - SetPath=/api/user  # Rewrite the path for the backend service to /api/user
+            - RemoveRequestHeader=Authorization # Remove header if service doesn't need authentication
+            - SetPath=/api/user
 
+        # Event Service
         - id: event-service
-          uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}  # Ensure EVENT_SERVICE_BASEURL is set in your environment
+          uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}
           predicates:
-            - Path=/events  # Match /events path in incoming requests
-            - Method=GET  # Only for GET requests to /events
+            - Path=/events
           filters:
-            - SetPath=/api/event  # Rewrite the path for the backend service to /api/event
+            - RemoveRequestHeader=Authorization # Public endpoint
+            - SetPath=/api/event
 
+        # Registration Service (POST /register)
         - id: registration-service
-          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}  # Ensure REGISTRATION_SERVICE_BASEURL is set in your environment
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
           predicates:
-            - Path=/register  # Match /register path in incoming requests
-            - Method=POST  # Only for POST requests to /register
+            - Path=/register
+            - Method=POST
           filters:
-            - SetPath=/api/registration  # Rewrite the path for the backend service to /api/registration
+            - SetPath=/api/registration
 
+        # Registration Service (GET /registrations)
         - id: registration-service-all
-          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}  # Ensure REGISTRATION_SERVICE_BASEURL is set in your environment
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
           predicates:
-            - Path=/registrations  # Match /registrations path in incoming requests
-            - Method=GET  # Only for GET requests to /registrations
+            - Path=/registrations
+            - Method=GET
           filters:
-            - SetPath=/api/registration/all  # Rewrite the path for the backend service to /api/registration/all
+            - PreserveHostHeader=true # Forward original host info
+            - SetPath=/api/registration/all
