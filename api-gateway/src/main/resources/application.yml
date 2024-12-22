@@ -27,25 +27,96 @@ spring:
     gateway:
       routes:
         # User Service
-        - id: user-service
+        - id: user-service-get-all
           uri: http://${USER_SERVICE_BASEURL:localhost:8080}
           predicates:
-            - Path=/api/users/**
+            - Path=/api/users
           filters:
-            - RemoveRequestHeader=Authorization # Remove header if service doesn't need authentication
+            - RemoveRequestHeader=Authorization
+        - id: user-service-get-by-id
+          uri: http://${USER_SERVICE_BASEURL:localhost:8080}
+          predicates:
+            - Path=/api/users/{userId}
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: user-service-register
+          uri: http://${USER_SERVICE_BASEURL:localhost:8080}
+          predicates:
+            - Path=/api/users/register
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: user-service-update
+          uri: http://${USER_SERVICE_BASEURL:localhost:8080}
+          predicates:
+            - Path=/api/users/{userId}
+            - Method=PUT
+          filters:
+            - RemoveRequestHeader=Authorization
 
         # Event Service
-        - id: event-service
+        - id: event-service-create
           uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}
           predicates:
-            - Path=/api/events/**
+            - Path=/api/events
+            - Method=POST
           filters:
-            - RemoveRequestHeader=Authorization # Public endpoint
+            - RemoveRequestHeader=Authorization
+        - id: event-service-get-by-names
+          uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}
+          predicates:
+            - Path=/api/events
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: event-service-get-all
+          uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}
+          predicates:
+            - Path=/api/events/all
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: event-service-get-by-id
+          uri: http://${EVENT_SERVICE_BASEURL:localhost:8081}
+          predicates:
+            - Path=/api/events/{eventId}
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=Authorization
 
         # Registration Service
-        - id: registration-service
+        - id: registration-service-register
           uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
           predicates:
-            - Path=/api/registrations/**
+            - Path=/api/registrations
+            - Method=POST
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: registration-service-get-by-user
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
+          predicates:
+            - Path=/api/registrations/user/{userId}
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: registration-service-get-by-event
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
+          predicates:
+            - Path=/api/registrations/event/{eventId}
+            - Method=GET
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: registration-service-update-status
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
+          predicates:
+            - Path=/api/registrations/{registrationId}
+            - Method=PATCH
+          filters:
+            - RemoveRequestHeader=Authorization
+        - id: registration-service-cancel
+          uri: http://${REGISTRATION_SERVICE_BASEURL:localhost:8082}
+          predicates:
+            - Path=/api/registrations/{registrationId}
+            - Method=DELETE
           filters:
             - RemoveRequestHeader=Authorization
